@@ -3,15 +3,16 @@ import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import fs from 'fs'
+import { BSONDate, dateToBSONDate } from '../bson'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
 interface Metadata {
 	patientID: number
-	createdAt: any
+	createdAt: BSONDate
 }
 interface BloodPressure {
-	dateTime: any
+	dateTime: BSONDate
 	metadata: Metadata
 	systolic: number
 	diastolic: number
@@ -25,8 +26,8 @@ const generateBloodPressure = (patientID: number, startDate: dayjs.Dayjs, endDat
 		const dates = faker.date.betweens(startDate.toDate(), startDate.add(15, 'hour').toDate(), frequency)
 		const bp = dates.map(
 			(date): BloodPressure => ({
-				dateTime: { $date: date.toISOString() },
-				metadata: { patientID, createdAt: { $date: date.toISOString() } },
+				dateTime: dateToBSONDate(date),
+				metadata: { patientID, createdAt: dateToBSONDate(date) },
 				systolic: faker.mersenne.rand(200, 100),
 				diastolic: faker.mersenne.rand(140, 50),
 				pulse: faker.mersenne.rand(120, 50),
