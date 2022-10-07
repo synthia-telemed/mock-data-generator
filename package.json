@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "gen-bp": "ts-node blood-pressure/index.ts > blood-pressure/data.log",
+    "blood-pressure": "ts-node blood-pressure/index.ts > blood-pressure/data.log",
     "glucose": "ts-node glucose/index.ts > glucose/data.log"
   },
   "keywords": [],
