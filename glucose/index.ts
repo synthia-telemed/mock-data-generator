@@ -7,16 +7,15 @@ import { BSONDate, dateToBSONDate } from '../bson'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-enum Meal {
-	Breakfast = 'breakfast',
-	Lunch = 'lunch',
-	Dinner = 'dinner',
+enum Period {
+	BeforeMeal = 'BEFORE_MEAL',
+	AfterMeal = 'AFTER_MEAL',
+	Fasting = 'FASTING',
 }
 interface Metadata {
 	patientID: number
 	createdAt: BSONDate
-	isBeforeMeal: boolean
-	meal: Meal
+	period: Period
 }
 interface Glucose {
 	dateTime: BSONDate
@@ -27,24 +26,18 @@ interface Glucose {
 const generateGlucoses = (patientID: number, startDate: dayjs.Dayjs, endDate: dayjs.Dayjs): Glucose[] => {
 	const glucoses: Glucose[] = []
 	while (!startDate.isAfter(endDate)) {
-		const freq = faker.mersenne.rand(0, 7)
 		let gs: Glucose[] = [
-			generateGlucose(patientID, startDate, true, Meal.Breakfast),
-			generateGlucose(patientID, startDate, true, Meal.Dinner),
-			generateGlucose(patientID, startDate, true, Meal.Lunch),
-			generateGlucose(patientID, startDate, false, Meal.Breakfast),
-			generateGlucose(patientID, startDate, false, Meal.Dinner),
-			generateGlucose(patientID, startDate, false, Meal.Lunch),
+			generateGlucose(patientID, startDate, Period.Fasting),
+			generateGlucose(patientID, startDate, Period.BeforeMeal),
+			generateGlucose(patientID, startDate, Period.AfterMeal),
 		]
+		const freq = faker.mersenne.rand(0, gs.length + 1)
 		gs = gs.slice(0, freq)
 		console.log(
 			startDate.tz('Asia/Bangkok').format('ddd DD/MM/YYYY'),
 			freq,
 			...gs.map(
-				g =>
-					`| ${g.metadata.isBeforeMeal ? 'Before' : 'After'} ${g.metadata.meal} ${dayjs(g.dateTime.$date)
-						.tz('Asia/Bangkok')
-						.format('HH:mm')} |`
+				g => `| ${g.metadata.period} ${g.value} ${dayjs(g.dateTime.$date).tz('Asia/Bangkok').format('HH:mm')} |`
 			)
 		)
 		glucoses.push(...gs)
@@ -53,33 +46,44 @@ const generateGlucoses = (patientID: number, startDate: dayjs.Dayjs, endDate: da
 	return glucoses
 }
 
-const generateGlucose = (patientID: number, startDate: dayjs.Dayjs, isBeforeMeal: boolean, meal: Meal): Glucose => {
-	const insertDateTime = randomInsertDateTime(startDate, isBeforeMeal, meal)
+const generateGlucose = (patientID: number, startDate: dayjs.Dayjs, period: Period): Glucose => {
+	const insertDateTime = randomInsertDateTime(startDate, period)
 	return {
 		dateTime: dateToBSONDate(insertDateTime.utc().toDate()),
-		metadata: { createdAt: dateToBSONDate(insertDateTime.utc().toDate()), isBeforeMeal, meal, patientID },
-		value: isBeforeMeal ? faker.mersenne.rand(70, 150) : faker.mersenne.rand(90, 200),
+		metadata: { createdAt: dateToBSONDate(insertDateTime.utc().toDate()), patientID, period },
+		value: randomGlucoseValue(period),
 	}
 }
 
-const randomInsertDateTime = (date: dayjs.Dayjs, isBeforeMeal: boolean, meal: Meal): dayjs.Dayjs => {
-	let start = date.hour(7).minute(0).second(0)
-	switch (meal) {
-		case Meal.Lunch:
-			start = date.hour(12).minute(0).second(0)
+const randomGlucoseValue = (period: Period) => {
+	switch (period) {
+		case Period.BeforeMeal:
+			return faker.mersenne.rand(80, 150)
+		case Period.AfterMeal:
+			return faker.mersenne.rand(100, 180)
+		case Period.Fasting:
+			return faker.mersenne.rand(70, 130)
+	}
+}
+
+const randomInsertDateTime = (date: dayjs.Dayjs, period: Period): dayjs.Dayjs => {
+	let start = date.hour(6).minute(0).second(0)
+	switch (period) {
+		case Period.BeforeMeal:
+			start = date.hour(faker.helpers.arrayElement([12, 18]))
 			break
-		case Meal.Dinner:
-			start = date.hour(18).minute(0).second(0)
+		case Period.AfterMeal:
+			start = date.hour(faker.helpers.arrayElement([12, 18]))
 			break
 	}
-	start = isBeforeMeal ? start.subtract(1, 'hour') : start.add(2, 'hour')
-	const end = start.add(1, 'hour')
+	start = period === Period.BeforeMeal || period === Period.Fasting ? start.subtract(1, 'hour') : start.add(2, 'hour')
+	const end = start.add(1, 'hour').endOf('hour')
 	const insertDate = faker.date.between(start.toDate(), end.toDate())
 	return dayjs(insertDate)
 }
 
-const et = dayjs()
-const st = et.subtract(3, 'month')
+const et = dayjs('2022-11-22T12:34:15+0000')
+const st = et.subtract(4, 'month')
 console.log(st.toISOString(), et.toISOString())
-const bloodPressure = generateGlucoses(1, st, et)
+const bloodPressure = generateGlucoses(5, st, et)
 fs.writeFileSync('glucose/data.json', JSON.stringify(bloodPressure))
