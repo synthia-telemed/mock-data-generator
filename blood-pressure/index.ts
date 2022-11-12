@@ -22,8 +22,14 @@ interface BloodPressure {
 const generateBloodPressure = (patientID: number, startDate: dayjs.Dayjs, endDate: dayjs.Dayjs): BloodPressure[] => {
 	const bloodPressure: BloodPressure[] = []
 	while (!startDate.isAfter(endDate, 'day')) {
-		const frequency = faker.mersenne.rand(5, 0)
-		const dates = faker.date.betweens(startDate.toDate(), startDate.add(15, 'hour').toDate(), frequency)
+		const frequency = faker.mersenne.rand(4, 0)
+		let dates = [
+			faker.date.between(startDate.hour(6).toDate(), startDate.hour(9).toDate()),
+			faker.date.between(startDate.hour(11).toDate(), startDate.hour(14).toDate()),
+			faker.date.between(startDate.hour(17).toDate(), startDate.hour(20).toDate()),
+		]
+		dates = faker.helpers.shuffle(dates)
+		dates = dates.slice(0, frequency)
 		const bp = dates.map(
 			(date): BloodPressure => ({
 				dateTime: dateToBSONDate(date),
@@ -36,7 +42,9 @@ const generateBloodPressure = (patientID: number, startDate: dayjs.Dayjs, endDat
 		console.log(
 			startDate.tz('Asia/Bangkok').format('ddd DD/MM/YYYY'),
 			bp.length,
-			...dates.map(date => dayjs(date).tz('Asia/Bangkok').format('HH:mm'))
+			...dates
+				.sort((a, b) => a.getTime() - b.getTime())
+				.map(date => dayjs(date).tz('Asia/Bangkok').format('HH:mm'))
 		)
 		bloodPressure.push(...bp)
 		startDate = startDate.add(1, 'day')
@@ -45,8 +53,8 @@ const generateBloodPressure = (patientID: number, startDate: dayjs.Dayjs, endDat
 	return bloodPressure
 }
 
-const st = dayjs().subtract(3, 'month').startOf('day').add(6, 'hour').utc()
-const et = dayjs().endOf('day').subtract(3, 'hour').utc()
+const et = dayjs('2022-11-22T12:34:15+0000').endOf('day')
+const st = et.subtract(4, 'month').startOf('day')
 console.log(st.toISOString(), et.toISOString())
 const bloodPressure = generateBloodPressure(1, st, et)
 fs.writeFileSync('blood-pressure/data.json', JSON.stringify(bloodPressure))
