@@ -19,6 +19,36 @@ interface BloodPressure {
 	pulse: number
 }
 
+enum Status {
+	NORMAL = 'Normal',
+	WARNING = 'Warning',
+	ABNORMAL = 'Abnormal',
+}
+
+const randomBloodPressureResult = (status: Status): { systolic: number; diastolic: number; pulse: number } => {
+	switch (status) {
+		case Status.NORMAL:
+			return {
+				diastolic: faker.mersenne.rand(80, 60),
+				systolic: faker.mersenne.rand(120, 90),
+				pulse: faker.mersenne.rand(165, 60),
+			}
+		case Status.WARNING:
+			return {
+				diastolic: faker.mersenne.rand(90, 80),
+				systolic: faker.mersenne.rand(140, 120),
+				pulse: faker.mersenne.rand(199, 168),
+			}
+		case Status.ABNORMAL:
+			const isLow = faker.helpers.arrayElement([false, true])
+			return {
+				diastolic: isLow ? faker.mersenne.rand(60, 40) : faker.mersenne.rand(120, 91),
+				systolic: isLow ? faker.mersenne.rand(90, 70) : faker.mersenne.rand(160, 141),
+				pulse: faker.mersenne.rand(220, 199),
+			}
+	}
+}
+
 const generateBloodPressure = (patientID: number, startDate: dayjs.Dayjs, endDate: dayjs.Dayjs): BloodPressure[] => {
 	const bloodPressure: BloodPressure[] = []
 	while (!startDate.isAfter(endDate, 'day')) {
@@ -30,15 +60,15 @@ const generateBloodPressure = (patientID: number, startDate: dayjs.Dayjs, endDat
 		]
 		dates = faker.helpers.shuffle(dates)
 		dates = dates.slice(0, frequency)
-		const bp = dates.map(
-			(date): BloodPressure => ({
+		const bp = dates.map((date): BloodPressure => {
+			const status = faker.helpers.arrayElement([Status.NORMAL, Status.ABNORMAL, Status.WARNING])
+			return {
 				dateTime: dateToBSONDate(date),
 				metadata: { patientID, createdAt: dateToBSONDate(date) },
-				systolic: faker.mersenne.rand(200, 100),
-				diastolic: faker.mersenne.rand(140, 50),
-				pulse: faker.mersenne.rand(120, 50),
-			})
-		)
+				...randomBloodPressureResult(status),
+			}
+		})
+
 		console.log(
 			startDate.tz('Asia/Bangkok').format('ddd DD/MM/YYYY'),
 			bp.length,
@@ -56,5 +86,5 @@ const generateBloodPressure = (patientID: number, startDate: dayjs.Dayjs, endDat
 const et = dayjs('2022-11-22T12:34:15+0000').endOf('day')
 const st = et.subtract(4, 'month').startOf('day')
 console.log(st.toISOString(), et.toISOString())
-const bloodPressure = generateBloodPressure(1, st, et)
+const bloodPressure = generateBloodPressure(5, st, et)
 fs.writeFileSync('blood-pressure/data.json', JSON.stringify(bloodPressure))
