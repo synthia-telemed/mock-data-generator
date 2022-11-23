@@ -82,7 +82,7 @@ const randomInsertDateTime = (date: dayjs.Dayjs, period: Period): dayjs.Dayjs =>
 	return dayjs(insertDate)
 }
 
-const et = dayjs('2022-11-22T12:34:15+0000')
+const et = dayjs('2022-11-23T12:34:15+0000')
 const st = et.subtract(4, 'month')
 console.log(st.toISOString(), et.toISOString())
 const bloodPressure = generateGlucoses(5, st, et)
